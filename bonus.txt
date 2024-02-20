@@ -1,0 +1,7 @@
+В проекте используются библиотеки:
+pyTelegramBotAPI
+    Ссылка на данные о библиотеке - https://pypi.org/project/pyTelegramBotAPI/
+	Ссылка на документацию на русском - https://pytba.readthedocs.io/ru/latest/index.html
+openpyxl
+    Ссылка на данные о библиотеке - https://pypi.org/project/openpyxl/
+	Ссылка на документацию на русском - https://docs-python.ru/packages/modul-openpyxl/
