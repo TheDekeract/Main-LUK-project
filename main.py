@@ -1,4 +1,5 @@
 import telebot
+from telebot import types
 
 # Указываем токен вашего бота, который вы получили у BotFather
 TOKEN = '6903824564:AAHdkswkz44FizTwrcRcz1zKyt1W_VC5BL8'
@@ -10,9 +11,28 @@ bot = telebot.TeleBot(TOKEN)
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     bot.send_message(message.chat.id, "Приветствую")
+    markup = types.ReplyKeyboardMarkup()
+    lessons = types.KeyboardButton('Расписание')
+    settings = types.KeyboardButton('Настройки')
+    findname = types.KeyboardButton('Поиск преподавателя')
+    help = types.KeyboardButton('Помощь')
+    markup.add(lessons)
+    markup.add(settings)
+    markup.add(findname)
+    markup.add(help)
+@bot.message_handler(commands=['lessons'])
+def lessons(message):
+    bot.send_message(message.chat.id, 'Здесь будет расписание')
+
+@bot.message_handler(commands=['settings'])
+def settings(message):
+    bot.send_message(message.chat.id, 'Здесь будут настройки')
+
+@bot.message_handler(commands=['findname'])
+def findname(message):
+    bot.send_message(message.chat.id, 'Здесь будет поиск по именам')
 @bot.message_handler(commands=['help'])
 def help(message):
-
     bot.send_message(message.chat.id,
                        '''  Справка для бота.
 Бот предоставляет услуги по уведомлению расписаний в беседах и личных сообщениях.
