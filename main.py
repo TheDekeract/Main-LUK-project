@@ -1,65 +1,63 @@
+import types
 import telebot
-from telebot import types
+from telebot.async_telebot import AsyncTeleBot
 
-# Указываем токен вашего бота, который вы получили у BotFather
-TOKEN = '6524851966:AAH8Sv5CO16nLanHmMthGPOoTqmwpB5ecNU'
-
-# Создаем экземпляр бота
-bot = telebot.TeleBot(TOKEN)
+# Указываем токен вашего бота, который вы получили у BotFather Создаем экземпляр бота
+bot = AsyncTeleBot('6524851966:AAH8Sv5CO16nLanHmMthGPOoTqmwpB5ecNU')
 
 
 # Обработчик команды /start
 @bot.message_handler(commands=['start', 'menu'])
-def handle_start(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    lessons0 = types.KeyboardButton('Расписание')
-    settings0 = types.KeyboardButton('Настройки')
-    findname0 = types.KeyboardButton('Поиск преподавателя')
-    help0 = types.KeyboardButton('Помощь')
+async def handle_start(message):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    lessons0 = telebot.types.KeyboardButton('Расписание')
+    settings0 = telebot.types.KeyboardButton('Настройки')
+    findname0 = telebot.types.KeyboardButton('Поиск преподавателя')
+    help0 = telebot.types.KeyboardButton('Помощь')
     markup.add(lessons0)
     markup.add(settings0)
     markup.add(findname0)
     markup.add(help0)
-    bot.send_message(message.chat.id, "Приветствую", reply_markup=markup)
+    await bot.send_message(message.chat.id, "Приветствую", reply_markup=markup)
 
 
 @bot.message_handler(func=lambda message: message.text == 'Расписание')
-def lessons(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    mylessons = types.KeyboardButton('Моё расписание')
-    alllessons = types.KeyboardButton('Расписание курса')
-    menu = types.KeyboardButton('/menu')
+async def lessons(message):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    mylessons = telebot.types.KeyboardButton('Моё расписание')
+    alllessons = telebot.types.KeyboardButton('Расписание курса')
+    menu = telebot.types.KeyboardButton('/menu')
     markup.add(mylessons)
     markup.add(alllessons)
     markup.add(menu)
-    bot.send_message(message.chat.id, 'Здесь будет расписание', reply_markup=markup)
+    await bot.send_message(message.chat.id, 'Здесь будет расписание', reply_markup=markup)
 
 
 @bot.message_handler(func=lambda message: message.text == 'Настройки', )
-def settings(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    changegr = types.KeyboardButton('Сменить группу')
-    changentf = types.KeyboardButton('Сменить уведомления')
-    changeweek = types.KeyboardButton('Сменить неделю на следующую')
-    menu = types.KeyboardButton('/menu')
+async def settings(message):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    changegr = telebot.types.KeyboardButton('Сменить группу')
+    changentf = telebot.types.KeyboardButton('Сменить уведомления')
+    changeweek = telebot.types.KeyboardButton('Сменить неделю на следующую')
+    menu = telebot.types.KeyboardButton('/menu')
     markup.add(changegr)
     markup.add(changentf)
     markup.add(changeweek)
     markup.add(menu)
-    bot.send_message(message.chat.id, 'Здесь будут настройки', reply_markup=markup)
+    await bot.send_message(message.chat.id, 'Здесь будут настройки', reply_markup=markup)
 
 
 @bot.message_handler(func=lambda message: message.text == 'Поиск преподавателя')
-def findname(message):
-    markup = types.ReplyKeyboardMarkup()
-    menu = types.KeyboardButton('/menu')
+async def findname(message):
+    markup = telebot.types.ReplyKeyboardMarkup()
+    menu = telebot.types.KeyboardButton('/menu')
     markup.add(menu)
-    bot.send_message(message.chat.id, 'Здесь будет поиск по именам')
+    await bot.send_message(message.chat.id, 'Здесь будет поиск по именам')
 
 
 @bot.message_handler(func=lambda message: message.text == 'Помощь')
-def help(message):
-    bot.send_message(message.chat.id,
+async def help(message):
+    await bot.send_message(message.chat.id,
                      '''  Справка для бота.
 Бот предоставляет услуги по уведомлению расписаний в беседах и личных сообщениях.
 В разделе \"Расписание\" можно найти кнопки, предоставляющие \"Ваше расписание\" и \"Общее расписание колледжа\".
@@ -72,4 +70,5 @@ def help(message):
 
 
 # Запускаем бота
-bot.polling(none_stop=True)
+import asyncio
+asyncio.run(bot.polling(none_stop=True))

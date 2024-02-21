@@ -6,7 +6,9 @@ openpyxl
     Ссылка на данные о библиотеке - https://pypi.org/project/openpyxl/
 	Ссылка на документацию на русском - https://docs-python.ru/packages/modul-openpyxl/
 
-
+Тoкены:
+1)6903824564:AAHdkswkz44FizTwrcRcz1zKyt1W_VC5BL
+2)6524851966:AAH8Sv5CO16nLanHmMthGPOoTqmwpB5ecNU
 
 Полный текст справки
 Справка для бота.
