@@ -8,7 +8,7 @@ openpyxl
 
 Тoкены:
 1)6903824564:AAHdkswkz44FizTwrcRcz1zKyt1W_VC5BL
-2)6524851966:AAH8Sv5CO16nLanHmMthGPOoTqmwpB5ecNU
+2)6947679713:AAEkzjA8Qv5gbB7iocqldIhc9Lg3OXbMC5A
 
 Полный текст справки
 Справка для бота.
