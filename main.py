@@ -14,10 +14,8 @@ async def handle_start(message):
     settings0 = telebot.types.KeyboardButton('⚙️Настройки')
     findname0 = telebot.types.KeyboardButton('👨🏻‍💼Поиск преподавателя')
     help0 = telebot.types.KeyboardButton('🆘Помощь')
-    markup.add(lessons0)
-    markup.add(settings0)
-    markup.add(findname0)
-    markup.add(help0)
+    markup.add(lessons0, settings0)
+    markup.add(findname0, help0)
     await bot.send_message(message.chat.id, "Приветствую, я чат бот с расписанием! Что тебя интересует?", reply_markup=markup)
 
 
@@ -27,8 +25,7 @@ async def lessons(message):
     mylessons = telebot.types.KeyboardButton('🗓Моё расписание')
     alllessons = telebot.types.KeyboardButton('📚Расписание курса')
     menu = telebot.types.KeyboardButton('/menu')
-    markup.add(mylessons)
-    markup.add(alllessons)
+    markup.add(mylessons, alllessons)
     markup.add(menu)
     await bot.send_message(message.chat.id, 'Здесь будет расписание', reply_markup=markup)
 
@@ -40,12 +37,23 @@ async def settings(message):
     changentf = telebot.types.KeyboardButton('🔔Сменить уведомления')
     changeweek = telebot.types.KeyboardButton('↔️Сменить неделю на следующую')
     menu = telebot.types.KeyboardButton('/menu')
-    markup.add(changegr)
-    markup.add(changentf)
-    markup.add(changeweek)
-    markup.add(menu)
+    markup.add(changegr, changentf)
+    markup.add(changeweek, menu)
     await bot.send_message(message.chat.id, 'Здесь будут настройки', reply_markup=markup)
-
+@bot.message_handler(func=lambda message: message.text == '🔔Сменить уведомления', )
+async def notifications(message):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    onehour = telebot.types.KeyboardButton('Уведомлять за час до')
+    oneday = telebot.types.KeyboardButton('Уведомлять за день до')
+    hourday = telebot.types.KeyboardButton('Уведомлять за час и за день до')
+    stopall = telebot.types.KeyboardButton('Отключить уведомления')
+    menu = telebot.types.KeyboardButton('/menu')
+    markup.add(onehour, oneday)
+    markup.add(hourday,stopall)
+    markup.add(menu)
+    await bot.send_message(message.chat.id, '''Чтобы сменить уведомление нажмите на соответствующую кнопку.
+Уведомления привязываются к первой паре каждого дня из вашего расписания.
+Учтите это!''', reply_markup=markup)
 
 @bot.message_handler(func=lambda message: message.text == '👨🏻‍💼Поиск преподавателя')
 async def findname(message):
