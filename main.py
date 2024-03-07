@@ -3,7 +3,7 @@ import telebot
 from telebot.async_telebot import AsyncTeleBot
 
 # Указываем токен вашего бота, который вы получили у BotFather Создаем экземпляр бота
-bot = AsyncTeleBot('6947679713:AAEkzjA8Qv5gbB7iocqldIhc9Lg3OXbMC5A')
+bot = AsyncTeleBot('6942842247:AAGliFh74a5cKTCeFQ3TY_1VxgaZpbAbrUs')
 
 
 # Обработчик команды /start
