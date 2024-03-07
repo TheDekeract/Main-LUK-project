@@ -38,20 +38,20 @@ def main_excel() :
             day_row = 26
             day_col = 7
             for _ in range(6) :  # Выводим расписание на 7 дней
-                day_cell = sheet.cell(row=day_row, column=day_col)
+                day_cell = sheet.cell(row=day_row, column=day_col)  # присваиваем ячейку переменной
                 print(f"День недели: {_}, Содержимое: {day_cell.value}, Координаты_: ({day_row}, {day_col})")
-                day_cell = cell.value
-                if day_cell is not None :
-                    sql = "INSERT INTO schedule (day_of_week_and_date) VALUES (%s) ON CONFLICT DO NOTHING"
+                day_cell = cell.value # присваиваем переменной значение ячейки
+                if day_cell is not None :  # отсев ячеек пустых
+                    sql = "INSERT INTO schedule (day_of_week_and_date) VALUES (%s) ON CONFLICT DO NOTHING"  # ввод в бд
                     cur.execute(sql, (day_cell,))  # def для cell_value
                 time_row = 26
                 time_col = 8
                 for t in range(7) :
-                    time_cell = sheet.cell(row=time_row, column=time_col)
+                    time_cell = sheet.cell(row=time_row, column=time_col)  # присваиваем ячейку переменной
                     print(f"Содержимое: {time_cell.value}, Координаты t: ({time_row}, {time_col})")
-                    time_cell = cell.value
-                    if time_cell is not None :
-                        sql = "INSERT INTO schedule (time_range) VALUES (%s) ON CONFLICT DO NOTHING"
+                    time_cell = cell.value # присваиваем переменной значение ячейки
+                    if time_cell is not None :  # отсев ячеек пустых
+                        sql = "INSERT INTO schedule (time_range) VALUES (%s) ON CONFLICT DO NOTHING" # ввод в бд
                         cur.execute(sql, (time_cell,))  # def для cell_value
                     time_row += 1
                 day_row += 7
