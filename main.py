@@ -1,10 +1,20 @@
-import types
+import asyncio
+import psycopg2
 import telebot
 from telebot.async_telebot import AsyncTeleBot
 
 # Указываем токен вашего бота, который вы получили у BotFather Создаем экземпляр бота
 bot = AsyncTeleBot('6942842247:AAGliFh74a5cKTCeFQ3TY_1VxgaZpbAbrUs')
 
+conn = psycopg2.connect(
+    dbname="Test",
+    user="postgres",
+    password="DZ6UO3M",
+    host="localhost",
+    port="5432"
+)
+cur = conn.cursor()
+user_state = {}
 
 # Обработчик команды /start
 @bot.message_handler(commands=['start', 'menu'])
@@ -14,10 +24,10 @@ async def handle_start(message):
     settings0 = telebot.types.KeyboardButton('⚙️Настройки')
     findname0 = telebot.types.KeyboardButton('👨🏻‍💼Поиск преподавателя')
     help0 = telebot.types.KeyboardButton('🆘Помощь')
+    username = message.from_user.first_name
     markup.add(lessons0, settings0)
     markup.add(findname0, help0)
-    await bot.send_message(message.chat.id, "Приветствую, я чат бот с расписанием! Что тебя интересует?", reply_markup=markup)
-
+    await bot.send_message(message.chat.id, f"Приветствую {username}! Я чат бот с расписанием! Что тебя интересует?", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: message.text == '📖Расписание')
 async def lessons(message):
@@ -28,7 +38,6 @@ async def lessons(message):
     markup.add(mylessons, alllessons)
     markup.add(menu)
     await bot.send_message(message.chat.id, 'Здесь будет расписание', reply_markup=markup)
-
 
 @bot.message_handler(func=lambda message: message.text == '⚙️Настройки', )
 async def settings(message):
@@ -55,13 +64,60 @@ async def notifications(message):
 Уведомления привязываются к первой паре каждого дня из вашего расписания.
 Учтите это!''', reply_markup=markup)
 
-@bot.message_handler(func=lambda message: message.text == '👨🏻‍💼Поиск преподавателя')
-async def findname(message):
-    markup = telebot.types.ReplyKeyboardMarkup()
-    menu = telebot.types.KeyboardButton('/menu')
-    markup.add(menu)
-    await bot.send_message(message.chat.id, 'Здесь будет поиск по именам')
+def get_teacher_schedule(lastname):
+    cur.execute("SELECT id_teacher FROM teachers WHERE full_name LIKE %s", (f"%{lastname}%",))
+    teacher_id = cur.fetchone()
+    if teacher_id:
+        cur.execute("""
+            SELECT
+                groups.name_group,
+                schedule.day_of_week_and_date,
+                schedule.time_range,
+                disciplines.name_discipline,
+                schedule.lesson_type,
+                audiences.room_number
+            FROM
+                schedule
+                JOIN groups ON schedule.id_group = groups.id_group
+                JOIN disciplines ON schedule.id_discipline = disciplines.id_discipline
+                JOIN audiences ON schedule.id_audience = audiences.id_audience
+            WHERE
+                schedule.id_teacher = %s
+        """, (teacher_id[0],))
+        schedule_rows = cur.fetchall()
+        return schedule_rows
+    else:
+        return None
 
+@bot.message_handler(func=lambda message: message.text == '👨🏻‍💼Поиск преподавателя')
+async def find_teacher(message):
+    user_state[message.chat.id] = {'waiting_for_lastname': True}
+    await bot.send_message(message.chat.id, "Введите фамилию преподавателя:")
+
+@bot.message_handler(func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('waiting_for_lastname'))
+async def process_teacher_name(message):
+    teacher_lastname = message.text
+    if teacher_lastname == "!":
+        await bot.send_message(message.chat.id, "Расписание для данного преподавателя не найдено.")
+        del user_state[message.chat.id]
+        return
+
+    teacher_lastname = message.text
+    teacher_schedule = get_teacher_schedule(teacher_lastname)
+    if teacher_schedule:
+        response = f"Расписание преподавателя {teacher_lastname}:\n"
+        for row in teacher_schedule:
+            response += f"------------------------------------------------------------\n👫 {row[0]}\n"
+            response += f"📅День и дата: {row[1]}\n"
+            response += f"🕒Время: {row[2]}\n"
+            response += f"📚Дисциплина: {row[3]}\n"
+            if row[4] != ".":
+                response += f"🧪Тип занятия: {row[4]}\n"
+            response += f"🏛Аудитория: {row[5]}\n"
+        await bot.send_message(message.chat.id, response)
+    else:
+        await bot.send_message(message.chat.id, "Расписание для данного преподавателя не найдено.")
+    del user_state[message.chat.id]  # Удаляем состояние пользователя
 
 @bot.message_handler(func=lambda message: message.text == '🆘Помощь')
 async def help(message):
@@ -76,7 +132,21 @@ async def help(message):
 В воскресенье неделя сменяется самостоятельно и для всех пользователей.
 🎉 Удачи в обучении. Спасибо, что пользуйтесь нашим ботом!''')
 
+@bot.message_handler(func=lambda message: True)
+async def handle_messages(message):
+    if message.text not in ['📖Расписание', '⚙️Настройки', '👨🏻‍💼Поиск преподавателя', '🆘Помощь', '🗓Моё расписание', '📚Расписание курса', '👨🏻‍🎓Сменить группу', '↔️Сменить неделю на следующую', 'Уведомлять за час до', 'Уведомлять за день до',  'Уведомлять за час и за день до', 'Отключить уведомления']:
+        markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+        lessons0 = telebot.types.KeyboardButton('📖Расписание')
+        settings0 = telebot.types.KeyboardButton('⚙️Настройки')
+        findname0 = telebot.types.KeyboardButton('👨🏻‍💼Поиск преподавателя')
+        help0 = telebot.types.KeyboardButton('🆘Помощь')
+        markup.add(lessons0, settings0)
+        markup.add(findname0, help0)
+        await bot.send_message(message.chat.id, "Извините, не могу понять ваше сообщение. Выберите одну из опций ниже:", reply_markup=markup)
 
 # Запускаем бота
-import asyncio
-asyncio.run(bot.polling(none_stop=True))
+async def main():
+    await bot.polling(none_stop=True)
+
+if __name__ == "__main__":
+    asyncio.run(main())
