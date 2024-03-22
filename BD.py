@@ -1,8 +1,7 @@
 import openpyxl
 import psycopg2
-import re
 
-filename = "8_26_02-02_03.xlsx"
+filename = "11_18_03-23_03.xlsx"
 
 conn = psycopg2.connect(
     dbname="luk",
@@ -19,7 +18,7 @@ def truncate_tables() :  # огромная очистка прошлых рас
     cur.execute("TRUNCATE TABLE teachers RESTART IDENTITY CASCADE;")
     cur.execute("TRUNCATE TABLE audiences RESTART IDENTITY CASCADE;")
     cur.execute("TRUNCATE TABLE schedule RESTART IDENTITY CASCADE;")
-    print('Clear')
+    print('Чистая База Данных')
 
 def main_excel() :
     try :
@@ -36,10 +35,8 @@ def main_excel() :
                 gr_col += 6
             for d in range(3) :
                 group_cell = sheet.cell(row=gr_row, column=gr_col)  # Движение по группам. Только по строке 24
-
                 if gr_col >= 219 :
                     raise StopIteration
-                print(f"ГРУППА КАКАЯ?,{group_cell.value}")
                 name_group = group_cell.value
                 if name_group is not None and name_group.strip() :  # Проверка на ненулевое и непустое значение ячейки
                     name_group = name_group.strip()
@@ -62,14 +59,6 @@ def main_excel() :
                         dis_col = gr_col
                         discipline = sheet.cell(row=dis_row, column=dis_col)
                         if discipline.value is not None and "день самостоятельной подготовки" in discipline.value :
-                            # print("ГОЙДА!")
-                            # print(f"=Содержимое: {group_cell.value}, Координаты_: ({gr_row}, {gr_col})") # норма
-                            # print(f"=Содержимое: {day_cell.value}, Координаты_: ({day_row}, {day_col})")  # норма
-                            # print(f"=Содержимое: {time_cell.value}, Координаты t: ({time_row}, {time_col})")  # убрать?
-                            # print(f"=Содержимое: {discipline.value}, Координаты t: ({dis_row}, {dis_col})")  # -
-                            # print(f"=Содержимое: {teacher.value}, Координаты t: ({teach_row}, {teach_col})")  #  -
-                            # print(f"=Содержимое: {place.value}, Координаты t: ({place_row}, {place_col})")  #  -
-                            # print(f"=Содержимое: {type_of_lesson.value}, Координаты t: ({typeof_row}, {typeof_col})")  #  -
                             group_in = group_cell.value
                             if group_cell is not None :  # отсев ячеек пустых
                                 sql = "INSERT INTO groups (name_group) VALUES (%s) ON CONFLICT DO NOTHING"  # добавление группы текущей ячейки в БД
@@ -106,21 +95,13 @@ def main_excel() :
                                 cur.execute(sql, (
                                 group_id, day_in, time_in, discipline_id, teacher_id, audience_id, typeof_in))
                             break
-                        if discipline.value is not None and "УЧЕБНАЯ ПРАКТИКА" in discipline.value :
-                            print("ГОЙДА!")
+                        elif discipline.value is not None and "УЧЕБНАЯ ПРАКТИКА" in discipline.value :
                             teach_row = time_row + 1
                             teach_col = dis_col + 2
                             teacher = sheet.cell(row=teach_row, column=teach_col)
                             place_row = teach_row
                             place_col = teach_col + 1
                             place = sheet.cell(row=place_row, column=place_col)
-                            # print(f"+Содержимое: {group_cell.value}, Координаты_: ({gr_row}, {gr_col})")
-                            # print(f"+Содержимое: {day_cell.value}, Координаты_: ({day_row}, {day_col})")
-                            # print(f"+Содержимое: {time_cell.value}, Координаты t: ({time_row}, {time_col})")
-                            # print(f"+Содержимое: {discipline.value}, Координаты t: ({dis_row}, {dis_col})")
-                            # print(f"+Содержимое: {teacher.value}, Координаты t: ({teach_row}, {teach_col})")
-                            # print(f"+Содержимое: {place.value}, Координаты t: ({place_row}, {place_col})")
-                            # print(f"+Содержимое: {type_of_lesson.value}, Координаты t: ({typeof_row}, {typeof_col})")
                             group_in = group_cell.value
                             if group_cell is not None :  # отсев ячеек пустых
                                 sql = "INSERT INTO groups (name_group) VALUES (%s) ON CONFLICT DO NOTHING"  # добавление группы текущей ячейки в БД
@@ -150,15 +131,12 @@ def main_excel() :
                                 audience_id = cur.fetchone()[0]
                             typeof_in = "."
                             if typeof_in is not None :
-                                sql = """
-                                                                INSERT INTO schedule (id_group, day_of_week_and_date, time_range, id_discipline, id_teacher, id_audience, lesson_type)
-                                                                VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING;
-                                                                """
-                                cur.execute(sql,
-                                            (group_id, day_in, time_in, discipline_id, teacher_id, audience_id,
-                                             typeof_in))
+                                sql = """INSERT INTO schedule (id_group, day_of_week_and_date, time_range, id_discipline, id_teacher, id_audience, lesson_type)VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING;"""
+                                cur.execute(sql,(group_id, day_in, time_in, discipline_id, teacher_id, audience_id,typeof_in))
                             break
-                        else :
+                        elif discipline.value is None:
+                            time_row += 1
+                        elif discipline.value is not None :
                             typeof_row = time_row
                             typeof_col = dis_col + 1
                             type_of_lesson = sheet.cell(row=typeof_row, column=typeof_col)
@@ -168,13 +146,13 @@ def main_excel() :
                             place_row = time_row
                             place_col = teach_col + 1
                             place = sheet.cell(row=place_row, column=place_col)
-                            print(f"Содержимое: {group_cell.value}, Координаты_: ({gr_row}, {gr_col})")
-                            print(f"Содержимое: {day_cell.value}, Координаты_: ({day_row}, {day_col})")
-                            print(f"Содержимое: {time_cell.value}, Координаты t: ({time_row}, {time_col})")
-                            print(f"Содержимое: {discipline.value}, Координаты t: ({dis_row}, {dis_col})")
-                            print(f"Содержимое: {teacher.value}, Координаты t: ({teach_row}, {teach_col})")
-                            print(f"Содержимое: {place.value}, Координаты t: ({place_row}, {place_col})")
-                            print(f"Содержимое: {type_of_lesson.value}, Координаты t: ({typeof_row}, {typeof_col})")
+                            # print(f"{group_cell.value}, Координаты_: ({gr_row}, {gr_col})")
+                            # print(f"{day_cell.value}, Координаты_: ({day_row}, {day_col})")
+                            # print(f"{time_cell.value}, Координаты t: ({time_row}, {time_col})")
+                            # print(f"{discipline.value}, Координаты t: ({dis_row}, {dis_col})")
+                            # print(f"{teacher.value}, Координаты t: ({teach_row}, {teach_col})")
+                            # print(f"{place.value}, Координаты t: ({place_row}, {place_col})")
+                            # print(f"{type_of_lesson.value}, Координаты t: ({typeof_row}, {typeof_col})")
 
                             group_in = group_cell.value
                             if group_cell is not None :  # отсев ячеек пустых
@@ -235,3 +213,4 @@ main_excel()
 conn.commit()
 cur.close()
 conn.close()
+print("База Данных вновь заполнена")

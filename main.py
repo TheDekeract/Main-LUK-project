@@ -7,13 +7,14 @@ from telebot.async_telebot import AsyncTeleBot
 bot = AsyncTeleBot('6942842247:AAGliFh74a5cKTCeFQ3TY_1VxgaZpbAbrUs')
 
 conn = psycopg2.connect(
-    dbname="Test",
-    user="postgres",
-    password="DZ6UO3M",
-    host="localhost",
-    port="5432"
-)
+        dbname="luk",
+        user="postgres",
+        password="admin",
+        host="localhost",
+        port="5432"
+    )
 cur = conn.cursor()
+
 user_state = {}
 
 # Обработчик команды /start
@@ -27,7 +28,7 @@ async def handle_start(message):
     username = message.from_user.first_name
     markup.add(lessons0, settings0)
     markup.add(findname0, help0)
-    await bot.send_message(message.chat.id, f"Приветствую {username}! Я чат бот с расписанием! Что тебя интересует?", reply_markup=markup)
+    await bot.send_message(message.chat.id, f"Приветствую, {username}! Я чат бот с расписанием! Что тебя интересует?", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: message.text == '📖Расписание')
 async def lessons(message):
@@ -37,7 +38,69 @@ async def lessons(message):
     menu = telebot.types.KeyboardButton('/menu')
     markup.add(mylessons, alllessons)
     markup.add(menu)
-    await bot.send_message(message.chat.id, 'Здесь будет расписание', reply_markup=markup)
+    await bot.send_message(message.chat.id, 'Выберите расписание', reply_markup=markup)
+
+def search_group(group_name):
+    cur.execute("SELECT id_group FROM groups WHERE name_group LIKE %s", (f"%{group_name}%",))
+    group_ids = cur.fetchall()
+    if group_ids:
+        schedule_rows = []
+        for group_id in group_ids:
+            cur.execute("""
+                SELECT
+                    schedule.day_of_week_and_date,
+                    schedule.time_range,
+                    disciplines.name_discipline,
+                    schedule.lesson_type,
+                    teachers.full_name,
+                    audiences.room_number
+                FROM
+                    schedule
+                    JOIN disciplines ON schedule.id_discipline = disciplines.id_discipline
+                    JOIN teachers ON schedule.id_teacher = teachers.id_teacher
+                    JOIN audiences ON schedule.id_audience = audiences.id_audience
+                WHERE
+                    schedule.id_group = %s
+            """, (group_id[0],))
+            schedule_rows.extend(cur.fetchall())
+        return schedule_rows
+    else:
+        return None
+
+@bot.message_handler(func=lambda message: message.text == '🗓Моё расписание')
+async def find_group_schedule(message):
+    user_state[message.chat.id] = {'waiting_for_group': True}
+    await bot.send_message(message.chat.id, "Для поиска введите часть названия группы:")
+
+@bot.message_handler(func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('waiting_for_group'))
+async def process_group_name(message):
+    group_name = message.text
+    if group_name == "!":
+        await bot.send_message(message.chat.id, "Расписание для данной группы не найдено.")
+        del user_state[message.chat.id]
+        return
+
+    group_schedule = search_group(group_name)
+    if group_schedule:
+        response = f"Расписание для группы(-ы) с названием, содержащим '{group_name}':\n"
+        for row in group_schedule:
+            response += f"------------------------------------------------------------\n"
+            response += f"📅 День и дата: {row[0]}\n"
+            response += f"🕒 Время: {row[1]}\n"
+            if row[2] != "!" :
+                response += f"📚 Дисциплина: {row[2]}\n"
+            if row[3] != "." and row[3] != "!":
+                response += f"🧪 Тип занятия: {row[3]}\n"
+            if row[4] != "!" :
+                response += f"👨🏻‍💼 Преподаватель: {row[4]}\n"
+            if row[5] != "!" :
+                response += f"🏛 Аудитория: {row[5]}\n"
+        await bot.send_message(message.chat.id, response)
+    else:
+        await bot.send_message(message.chat.id, f"Расписание для группы(-ы) с названием, содержащим '{group_name}', не найдено.")
+    del user_state[message.chat.id]
+
+
 
 @bot.message_handler(func=lambda message: message.text == '⚙️Настройки', )
 async def settings(message):
@@ -64,7 +127,7 @@ async def notifications(message):
 Уведомления привязываются к первой паре каждого дня из вашего расписания.
 Учтите это!''', reply_markup=markup)
 
-def get_teacher_schedule(lastname):
+def searchteacher(lastname):
     cur.execute("SELECT id_teacher FROM teachers WHERE full_name LIKE %s", (f"%{lastname}%",))
     teacher_id = cur.fetchone()
     if teacher_id:
@@ -103,7 +166,7 @@ async def process_teacher_name(message):
         return
 
     teacher_lastname = message.text
-    teacher_schedule = get_teacher_schedule(teacher_lastname)
+    teacher_schedule = searchteacher(teacher_lastname)
     if teacher_schedule:
         response = f"Расписание преподавателя {teacher_lastname}:\n"
         for row in teacher_schedule:
@@ -117,7 +180,7 @@ async def process_teacher_name(message):
         await bot.send_message(message.chat.id, response)
     else:
         await bot.send_message(message.chat.id, "Расписание для данного преподавателя не найдено.")
-    del user_state[message.chat.id]  # Удаляем состояние пользователя
+    del user_state[message.chat.id]
 
 @bot.message_handler(func=lambda message: message.text == '🆘Помощь')
 async def help(message):
