@@ -104,8 +104,8 @@ async def process_group_name(message):
                 response += f"🏛 Аудитория: {row[5]}\n"
 
 
-        for i in range(0, len(response), 4096):
-            await bot.send_message(message.chat.id, response[i:i + 4096])
+        for i in range(0, len(response), 4000):
+            await bot.send_message(message.chat.id, response[i:i + 4000])
     else:
         await bot.send_message(message.chat.id,
                                f"Расписание для группы(-ы) с названием, содержащим '{group_name}', не найдено.")
