@@ -1,6 +1,7 @@
 import asyncio
 import psycopg2
 import telebot
+import re
 from telebot.async_telebot import AsyncTeleBot
 
 # Указываем токен вашего бота, который вы получили у BotFather Создаем экземпляр бота
@@ -70,34 +71,45 @@ def search_group(group_name):
 @bot.message_handler(func=lambda message: message.text == '🗓Моё расписание')
 async def find_group_schedule(message):
     user_state[message.chat.id] = {'waiting_for_group': True}
-    await bot.send_message(message.chat.id, "Для поиска введите часть названия группы:")
+    await bot.send_message(message.chat.id, "Для поиска введите название группы:")
 
-@bot.message_handler(func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('waiting_for_group'))
+def validate_group_format(group_name):
+    pattern = r'^[А-ЯЁа-яё]{3,4}\-[0-9]{3}\-[0-9]{2}\-[0-9]{2}$'  # Паттерн для проверки формата группы
+    return re.match(pattern, group_name) is not None
+
+
+@bot.message_handler(
+    func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('waiting_for_group'))
 async def process_group_name(message):
-    group_name = message.text
-    if group_name == "!":
-        await bot.send_message(message.chat.id, "Расписание для данной группы не найдено.")
-        del user_state[message.chat.id]
+    group_name = message.text.strip()
+    if not validate_group_format(group_name):
+        await bot.send_message(message.chat.id,
+                               "Неверный формат группы. Пожалуйста, введите название группы корректно. (Например ИСПк-201-51-00) При вводе вашей группы, обязательно приписывайте нули.")
         return
 
     group_schedule = search_group(group_name)
     if group_schedule:
-        response = f"Расписание для группы(-ы) с названием, содержащим '{group_name}':\n"
+        response = f"Расписание для группы(-ы) '{group_name}':\n"
         for row in group_schedule:
             response += f"------------------------------------------------------------\n"
             response += f"📅 День и дата: {row[0]}\n"
             response += f"🕒 Время: {row[1]}\n"
-            if row[2] != "!" :
+            if row[2] != "!":
                 response += f"📚 Дисциплина: {row[2]}\n"
             if row[3] != "." and row[3] != "!":
                 response += f"🧪 Тип занятия: {row[3]}\n"
-            if row[4] != "!" :
+            if row[4] != "!":
                 response += f"👨🏻‍💼 Преподаватель: {row[4]}\n"
-            if row[5] != "!" :
+            if row[5] != "!":
                 response += f"🏛 Аудитория: {row[5]}\n"
-        await bot.send_message(message.chat.id, response)
+
+
+        for i in range(0, len(response), 4096):
+            await bot.send_message(message.chat.id, response[i:i + 4096])
     else:
-        await bot.send_message(message.chat.id, f"Расписание для группы(-ы) с названием, содержащим '{group_name}', не найдено.")
+        await bot.send_message(message.chat.id,
+                               f"Расписание для группы(-ы) с названием, содержащим '{group_name}', не найдено.")
+
     del user_state[message.chat.id]
 
 
@@ -207,7 +219,7 @@ async def handle_messages(message):
         markup.add(findname0, help0)
         await bot.send_message(message.chat.id, "Извините, не могу понять ваше сообщение. Выберите одну из опций ниже:", reply_markup=markup)
 
-# Запускаем бота
+
 async def main():
     await bot.polling(none_stop=True)
 
