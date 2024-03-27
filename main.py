@@ -183,7 +183,7 @@ async def process_teacher_name(message):
         response = f"Расписание преподавателя {teacher_lastname}:\n"
         for row in teacher_schedule:
             response += f"------------------------------------------------------------\n👫 {row[0]}\n"
-            response += f"📅День и дата: {row[1]}\n"
+            response += f"📅 {row[1]}\n"
             response += f"🕒Время: {row[2]}\n"
             response += f"📚Дисциплина: {row[3]}\n"
             if row[4] != ".":
