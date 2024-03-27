@@ -67,7 +67,7 @@ def main_excel() :
                                 group_id = cur.fetchone()[0]
                             day_in = day_cell.value
                             time_in = time_cell.value
-                            dis_in = "!"
+                            dis_in = "День самостоятельной подготовки"
                             if dis_in is not None :  # отсев ячеек пустых
                                 sql = "INSERT INTO disciplines (name_discipline) VALUES (%s) ON CONFLICT DO NOTHING"
                                 cur.execute(sql, (dis_in,))  # def для cell_value
