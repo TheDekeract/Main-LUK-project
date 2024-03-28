@@ -38,7 +38,9 @@ async def firstgroup(message):
     user_state[message.chat.id]['Ожидание_группы'] = False
     user_state[message.chat.id]['Ожидание_уведомлений'] = True
     await bot.send_message(message.chat.id, "Отлично! Теперь введите время уведомления.")
-
+async def validate_group_format(group_name) :
+    pattern = r'^[А-ЯЁа-яё]{3,4}\-[0-9]{3}\-[0-9]{2}\-[0-9]{2}$'  # Паттерн для проверки формата группы
+    return re.match(pattern, group_name) is not None
 @bot.message_handler(commands=['start', 'menu'])
 async def handle_start(message) :
     user_id = message.from_user.id
@@ -85,15 +87,10 @@ async def notifications1(message) :
     await send_main_menu(message.chat.id)
 
 
-async def validate_group_format(group_name) :
-    pattern = r'^[А-ЯЁа-яё]{3,4}\-[0-9]{3}\-[0-9]{2}\-[0-9]{2}$'  # Паттерн для проверки формата группы
-    return re.match(pattern, group_name) is not None
 
 
-async def get_user_group(user_id):
-    cur.execute("SELECT unicours FROM people WHERE user_id = %s", (user_id,))
-    group_name = cur.fetchone()
-    return group_name[0] if group_name else None
+
+
 
 
 
@@ -106,6 +103,10 @@ async def find_group_schedule(message):
     else:
         await bot.send_message(message.chat.id, "Ваша группа не найдена. Пожалуйста, обратитесь к администратору.")
 
+async def get_user_group(user_id):
+    cur.execute("SELECT unicours FROM people WHERE id_p = %s", (user_id,))
+    group_name = cur.fetchone()
+    return group_name[0] if group_name else None
 
 async def search_group_schedule(group_name):
     cur.execute("SELECT id_group FROM groups WHERE name_group LIKE %s", (f"%{group_name}%",))
@@ -135,6 +136,7 @@ async def search_group_schedule(group_name):
         return None
 
 async def send_group_schedule(chat_id, group_name):
+    await bot.send_message(chat_id, "Ваша группа найдена. Пожалуйста ждите.")
     group_schedule = await search_group_schedule(group_name)
     if group_schedule:
         response = f"Расписание для группы(-ы) '{group_name}':\n"
@@ -184,6 +186,15 @@ async def notifications(message) :
 Уведомления привязываются к первой паре каждого дня из вашего расписания.
 Учтите это!''', reply_markup=markup)
 
+@bot.message_handler(func=lambda message: message.text == '📖Расписание')
+async def lessons(message):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    mylessons = telebot.types.KeyboardButton('🗓Моё расписание')
+    alllessons = telebot.types.KeyboardButton('📚Расписание курса')
+    menu = telebot.types.KeyboardButton('/menu')
+    markup.add(mylessons, alllessons)
+    markup.add(menu)
+    await bot.send_message(message.chat.id, 'Выберите расписание', reply_markup=markup)
 
 def searchteacher(lastname) :
     cur.execute("SELECT id_teacher FROM teachers WHERE full_name LIKE %s", (f"%{lastname}%",))
