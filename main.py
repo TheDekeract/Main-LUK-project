@@ -19,28 +19,41 @@ cur = conn.cursor()
 
 user_state = {}
 
-
 # @bot.message_handler(commands=['start', 'menu'])
 # async def first_start(message):
-#     username = message.from_user.first_name
-#     user_state[message.chat.id] = {'Ожидание_группы': True, 'group': None, 'notif': None}
-#     await bot.send_message(message.chat.id, f"Приветствую, {username}! Я чат бот с расписанием! Введите свою группу")
+#    username = message.from_user.first_name
+#    user_state[message.chat.id] = {'Ожидание_группы': True, 'group': None, 'notif': None}
+#    await bot.send_message(message.chat.id, f"Приветствую, {username}! Я чат бот с расписанием! Введите свою группу")
+
+async def new_user_registration(chat_id) :
+    markup = telebot.types.ReplyKeyboardRemove()
+    await bot.send_message(chat_id, f"Приветствую! Я чат бот с расписанием! Введите свою группу:",
+                           reply_markup=markup)
+    user_state[chat_id] = {'Ожидание_группы' : True}
 
 @bot.message_handler(
-    func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('Ожидание_группы'))
-async def firstgroup(message):
-    group_name = message.text.strip()
-    if not validate_group_format(group_name):
+    func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('Ожидание_уведомлений'))
+async def notifications1(message):
+    notif_text = message.text.strip().lower()
+    if notif_text not in ['за день', 'за час', 'за день и за час', 'без уведомлений']:
         await bot.send_message(message.chat.id,
-                               "Неверный формат группы. Пожалуйста, введите название группы корректно. (Например ИСПк-201-51-00). При вводе вашей группы, обязательно приписывайте нули.")
+                               "Неверный формат уведомлений. Пожалуйста, выберите один из предложенных вариантов.")
         return
-    user_state[message.chat.id]['group'] = group_name
-    user_state[message.chat.id]['Ожидание_группы'] = False
-    user_state[message.chat.id]['Ожидание_уведомлений'] = True
-    await bot.send_message(message.chat.id, "Отлично! Теперь введите время уведомления.")
-async def validate_group_format(group_name) :
-    pattern = r'^[А-ЯЁа-яё]{3,4}\-[0-9]{3}\-[0-9]{2}\-[0-9]{2}$'  # Паттерн для проверки формата группы
-    return re.match(pattern, group_name) is not None
+
+    user_state[message.chat.id]['notif'] = notif_text
+    user_id = message.from_user.id
+    p_group = user_state[message.chat.id]['group']
+    p_notif = user_state[message.chat.id]['notif']
+
+    cur.execute("INSERT INTO people (id_p, unicours, notif) VALUES (%s, %s, %s)", (user_id, p_group, p_notif))
+    conn.commit()
+
+    # Обновление состояния пользователя
+    user_state[message.chat.id]['Ожидание_уведомлений'] = False
+
+    await bot.send_message(message.chat.id, "Ваши данные сохранены. Спасибо!")
+    await send_main_menu(message.chat.id)
+
 @bot.message_handler(commands=['start', 'menu'])
 async def handle_start(message) :
     user_id = message.from_user.id
@@ -52,49 +65,33 @@ async def handle_start(message) :
     else :
         await new_user_registration(message.chat.id)
 
+@bot.message_handler(
+    func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('Ожидание_группы'))
+async def firstgroup(message):
+    group_name = message.text.strip()
+    if not await validate_group_format(group_name):
+        await bot.send_message(message.chat.id,
+                               "Неверный формат группы. Пожалуйста, введите название группы корректно. (Например ИСПк-201-51-00). При вводе вашей группы, обязательно приписывайте нули.")
+        return
+    user_state[message.chat.id]['group'] = group_name
+    user_state[message.chat.id]['Ожидание_группы'] = False
+    user_state[message.chat.id]['Ожидание_уведомлений'] = True
+    await bot.send_message(message.chat.id, "Отлично! Теперь введите время уведомления.")
+async def validate_group_format(group_name):
+    pattern = r'^[А-ЯЁа-яё]{3,4}-[0-9]{3}-[0-9]{2}-[0-9]{2}$'  # Исправленный паттерн для проверки формата группы
+    return re.match(pattern, group_name) is not None
 
-async def send_main_menu(chat_id) :
+async def send_main_menu(chat_id):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    lessons_button = telebot.types.KeyboardButton('📖 Расписание')
-    settings_button = telebot.types.KeyboardButton('⚙️ Настройки')
-    find_teacher_button = telebot.types.KeyboardButton('👨🏻‍💼 Поиск преподавателя')
-    help_button = telebot.types.KeyboardButton('🆘 Помощь')
+    lessons_button = telebot.types.KeyboardButton('📖Расписание')
+    settings_button = telebot.types.KeyboardButton('⚙️Настройки')
+    find_teacher_button = telebot.types.KeyboardButton('👨🏻‍💼Поиск преподавателя')
+    help_button = telebot.types.KeyboardButton('🆘Помощь')
     markup.add(lessons_button, settings_button)
     markup.add(find_teacher_button, help_button)
     await bot.send_message(chat_id, f"Приветствую! Что тебя интересует?", reply_markup=markup)
 
-async def new_user_registration(chat_id) :
-    markup = telebot.types.ReplyKeyboardRemove()
-    await bot.send_message(chat_id, f"Приветствую! Я чат бот с расписанием! Введите свою группу:",
-                           reply_markup=markup)
-    user_state[chat_id] = {'Ожидание_группы' : True}
-
-@bot.message_handler(
-    func=lambda message : message.chat.id in user_state and user_state[message.chat.id].get('Ожидание_уведомлений'))
-async def notifications1(message) :
-    notif_text = message.text.strip().lower()
-    if notif_text not in ['за день', 'за час', 'за день и за час', 'без уведомлений'] :
-        await bot.send_message(message.chat.id,
-                               "Неверный формат уведомлений. Пожалуйста, выберите один из предложенных вариантов.")
-        return
-    user_state[message.chat.id]['notif'] = notif_text
-    user_id = message.from_user.id
-    p_group = user_state[message.chat.id]['group']
-    p_notif = user_state[message.chat.id]['notif']
-    cur.execute("INSERT INTO people (id_p, unicours, notif) VALUES (%s, %s, %s)", (user_id, p_group, p_notif))
-    conn.commit()
-    await bot.send_message(message.chat.id, "Ваши данные сохранены. Спасибо!")
-    await send_main_menu(message.chat.id)
-
-
-
-
-
-
-
-
-
-@bot.message_handler(func=lambda message: message.text == '🗓Моё расписание')
+@bot.message_handler(func=lambda message: message.text.lower() == '🗓моё расписание')
 async def find_group_schedule(message):
     user_id = message.from_user.id
     group_name = await get_user_group(user_id)
@@ -189,14 +186,14 @@ async def notifications(message) :
 @bot.message_handler(func=lambda message: message.text == '📖Расписание')
 async def lessons(message):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    mylessons = telebot.types.KeyboardButton('🗓Моё расписание')
-    alllessons = telebot.types.KeyboardButton('📚Расписание курса')
-    menu = telebot.types.KeyboardButton('/menu')
-    markup.add(mylessons, alllessons)
-    markup.add(menu)
+    my_lessons = telebot.types.KeyboardButton('🗓Моё расписание')
+    all_lessons = telebot.types.KeyboardButton('📚Расписание курса')
+    back_to_menu = telebot.types.KeyboardButton('/menu')
+    markup.add(my_lessons, all_lessons)
+    markup.add(back_to_menu)
     await bot.send_message(message.chat.id, 'Выберите расписание', reply_markup=markup)
 
-def searchteacher(lastname) :
+async def searchteacher(lastname) :
     cur.execute("SELECT id_teacher FROM teachers WHERE full_name LIKE %s", (f"%{lastname}%",))
     teacher_id = cur.fetchone()
     if teacher_id :
@@ -238,7 +235,7 @@ async def process_teacher_name(message) :
         return
 
     teacher_lastname = message.text
-    teacher_schedule = searchteacher(teacher_lastname)
+    teacher_schedule = await  searchteacher(teacher_lastname)
     if teacher_schedule :
         response = f"Расписание преподавателя {teacher_lastname}:\n"
         for row in teacher_schedule :
@@ -254,7 +251,6 @@ async def process_teacher_name(message) :
         await bot.send_message(message.chat.id, "Расписание для данного преподавателя не найдено.")
     del user_state[message.chat.id]
 
-
 @bot.message_handler(func=lambda message : message.text == '🆘Помощь')
 async def help(message) :
     await bot.send_message(message.chat.id,
@@ -268,13 +264,12 @@ async def help(message) :
 В воскресенье неделя сменяется самостоятельно и для всех пользователей.
 🎉 Удачи в обучении. Спасибо, что пользуйтесь нашим ботом!''')
 
-
-@bot.message_handler(func=lambda message : True)
-async def handle_messages(message) :
+@bot.message_handler(func=lambda message: True)
+async def handle_messages(message):
     if message.text not in ['📖Расписание', '⚙️Настройки', '👨🏻‍💼Поиск преподавателя', '🆘Помощь', '🗓Моё расписание',
                             '📚Расписание курса', '👨🏻‍🎓Сменить группу', '↔️Сменить неделю на следующую',
                             'Уведомлять за час до', 'Уведомлять за день до', 'Уведомлять за час и за день до',
-                            'Отключить уведомления'] :
+                            'Отключить уведомления']:
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
         lessons0 = telebot.types.KeyboardButton('📖Расписание')
         settings0 = telebot.types.KeyboardButton('⚙️Настройки')
@@ -284,7 +279,6 @@ async def handle_messages(message) :
         markup.add(findname0, help0)
         await bot.send_message(message.chat.id, "Извините, не могу понять ваше сообщение. Выберите одну из опций ниже:",
                                reply_markup=markup)
-
 
 async def main() :
     await bot.polling(none_stop=True)

@@ -18,7 +18,7 @@ def truncate_tables() :  # огромная очистка прошлых рас
     cur.execute("TRUNCATE TABLE teachers RESTART IDENTITY CASCADE;")
     cur.execute("TRUNCATE TABLE audiences RESTART IDENTITY CASCADE;")
     cur.execute("TRUNCATE TABLE schedule RESTART IDENTITY CASCADE;")
-#    cur.execute("TRUNCATE TABLE people RESTART IDENTITY CASCADE;")
+    #cur.execute("TRUNCATE TABLE people RESTART IDENTITY CASCADE;")
     print('Чистая База Данных')
 
 def main_excel() :
