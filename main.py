@@ -27,12 +27,10 @@ user_state = {}
 
 async def new_user_registration(chat_id) :
     markup = telebot.types.ReplyKeyboardRemove()
-    await bot.send_message(chat_id, f"Приветствую! Я чат бот с расписанием! Введите свою группу:",
-                           reply_markup=markup)
+    await bot.send_message(chat_id, f"Приветствую! Я чат бот с расписанием! Введите свою группу:", reply_markup=markup)
     user_state[chat_id] = {'Ожидание_группы' : True}
 
-@bot.message_handler(
-    func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('Ожидание_уведомлений'))
+@bot.message_handler(func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('Ожидание_уведомлений'))
 async def notifications1(message):
     notif_text = message.text.strip().lower()
     if notif_text not in ['за день', 'за час', 'за день и за час', 'без уведомлений']:
@@ -47,8 +45,6 @@ async def notifications1(message):
 
     cur.execute("INSERT INTO people (id_p, unicours, notif) VALUES (%s, %s, %s)", (user_id, p_group, p_notif))
     conn.commit()
-
-    # Обновление состояния пользователя
     user_state[message.chat.id]['Ожидание_уведомлений'] = False
 
     await bot.send_message(message.chat.id, "Ваши данные сохранены. Спасибо!")
@@ -65,8 +61,7 @@ async def handle_start(message) :
     else :
         await new_user_registration(message.chat.id)
 
-@bot.message_handler(
-    func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('Ожидание_группы'))
+@bot.message_handler(func=lambda message: message.chat.id in user_state and user_state[message.chat.id].get('Ожидание_группы'))
 async def firstgroup(message):
     group_name = message.text.strip()
     if not await validate_group_format(group_name):
@@ -161,19 +156,39 @@ async def settings(message) :
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     changegr = telebot.types.KeyboardButton('👨🏻‍🎓Сменить группу')
     changentf = telebot.types.KeyboardButton('🔔Сменить уведомления')
-    changeweek = telebot.types.KeyboardButton('↔️Сменить неделю на следующую')
     menu = telebot.types.KeyboardButton('/menu')
     markup.add(changegr, changentf)
-    markup.add(changeweek, menu)
-    await bot.send_message(message.chat.id, 'Здесь будут настройки', reply_markup=markup)
+    markup.add(menu)
+    await bot.send_message(message.chat.id, 'Что именно вы хотите сменить?', reply_markup=markup)
 
+@bot.message_handler(func=lambda message: message.text == '👨🏻‍🎓Сменить группу')
+async def chnge_uni(message):
+    await bot.send_message(message.chat.id, 'Чтобы сменить группу введите название группы корректно (например ИСПк-201-51-00). При вводе вашей группы, обязательно приписывайте нули.')
+    user_state[message.chat.id] = {'Ожидание_группы1': True}
 
-@bot.message_handler(func=lambda message : message.text == '🔔Сменить уведомления', )
-async def notifications(message) :
+@bot.message_handler(func=lambda message: True and user_state[message.chat.id].get('Ожидание_группы1'))
+async def process_message(message):
+    group_name = message.text.strip()
+    pattern = r'^[А-ЯЁа-яё]{3,4}-[0-9]{3}-[0-9]{2}-[0-9]{2}$'
+    if re.match(pattern, group_name):
+        await chnge_uni1(message, group_name)
+        del user_state[message.chat.id]['Ожидание_группы1']  # Я удаляю ключ, так как он больше не нужен
+    else:
+        await bot.send_message(message.chat.id, 'Некорректный формат группы. Пожалуйста, введите группу в правильном формате.')
+
+async def chnge_uni1(message, group_name):
+    user_id = message.from_user.id
+    p_group = group_name
+    cur.execute("UPDATE people SET unicours = %s WHERE id_p = %s", (p_group, user_id))
+    conn.commit()
+    await bot.send_message(message.chat.id, "Отлично! Вы сменили свою группу.")
+
+@bot.message_handler(func=lambda message: message.text == '🔔Сменить уведомления')
+async def notifications(message):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     onehour = telebot.types.KeyboardButton('Уведомлять за час до')
     oneday = telebot.types.KeyboardButton('Уведомлять за день до')
-    hourday = telebot.types.KeyboardButton('Уведомлять за час и за день до')
+    hourday = telebot.types.KeyboardButton('Уведомлять за день и за час до')
     stopall = telebot.types.KeyboardButton('Отключить уведомления')
     menu = telebot.types.KeyboardButton('/menu')
     markup.add(onehour, oneday)
@@ -182,6 +197,34 @@ async def notifications(message) :
     await bot.send_message(message.chat.id, '''Чтобы сменить уведомление нажмите на соответствующую кнопку.
 Уведомления привязываются к первой паре каждого дня из вашего расписания.
 Учтите это!''', reply_markup=markup)
+
+
+@bot.message_handler(func=lambda message : message.text in ['Уведомлять за час до', 'Уведомлять за день до', 'Уведомлять за день и за час до', 'Отключить уведомления'])
+async def handle_notifications(message) :
+    notification_types = {
+        'Уведомлять за час до' : 'за час',
+        'Уведомлять за день до' : 'за день',
+        'Уведомлять за день и за час до' : 'за день и за час',
+        'Отключить уведомления' : 'без уведомлений'
+    }
+    notification_type = message.text
+    notification_text = notification_types.get(notification_type)
+    if notification_text is None :
+        await bot.send_message(message.chat.id, "Неверный тип уведомления.")
+        return
+
+    user_state[message.chat.id] = {'notif': notification_text}
+    await update_notif_in_database(message)
+
+async def update_notif_in_database(message) :
+        user_id = message.from_user.id
+        # p_group = user_state[message.chat.id]['group']
+        p_notif = user_state[message.chat.id]['notif']
+        cur.execute("UPDATE people SET notif = %s WHERE id_p = %s", (p_notif, user_id))
+        conn.commit()
+        await bot.send_message(message.chat.id, "Отлично! Вы сменили свои уведомления.")
+
+
 
 @bot.message_handler(func=lambda message: message.text == '📖Расписание')
 async def lessons(message):
@@ -268,7 +311,7 @@ async def help(message) :
 async def handle_messages(message):
     if message.text not in ['📖Расписание', '⚙️Настройки', '👨🏻‍💼Поиск преподавателя', '🆘Помощь', '🗓Моё расписание',
                             '📚Расписание курса', '👨🏻‍🎓Сменить группу', '↔️Сменить неделю на следующую',
-                            'Уведомлять за час до', 'Уведомлять за день до', 'Уведомлять за час и за день до',
+                            'Уведомлять за час до', 'Уведомлять за день до', 'Уведомлять за день и за час до',
                             'Отключить уведомления']:
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
         lessons0 = telebot.types.KeyboardButton('📖Расписание')
